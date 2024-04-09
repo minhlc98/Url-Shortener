@@ -1,13 +1,13 @@
 import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
-import { JwtService } from '@nestjs/jwt';
+import { AuthService } from '../auth/auth.service';
 
 import { User } from './entities/user.entity';
 import { SignUpDto } from './dto/sign-up';
 import { SignInResult } from './interface/sign-in-result';
 import { SignInDto } from './dto/sign-in';
+import { JwtPayload } from './interface/jwt-payload';
 
 @Injectable()
 export class UserService {
@@ -15,7 +15,7 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
-    private jwtService: JwtService
+    private authService: AuthService
   ) {}
   
   findAll(): Promise<User[]> {
@@ -42,7 +42,7 @@ export class UserService {
       }
     }
 
-    const isMatchPassword = await bcrypt.compare(data.password, user.password);
+    const isMatchPassword = await this.authService.comparePassword(data.password, user.password);
     if (!isMatchPassword) {
       await this.userRepository.update(
         user.id,
@@ -62,8 +62,8 @@ export class UserService {
       }
     );
 
-    const payload = { id: user.id, email: user.email };
-    const token = await this.jwtService.signAsync(payload);
+    const payload: JwtPayload = { id: user.id, email: user.email };
+    const token = await this.authService.signToken(payload);
 
     return { token };
   }
@@ -74,7 +74,7 @@ export class UserService {
       throw new BadRequestException('Email đã tồn tại. Vui lòng kiểm tra lại.');
     }
 
-    const hashedPassword = await bcrypt.hash(data.password, this.saltRounds);
+    const hashedPassword = await this.authService.hashPassword(data.password);
 
     return this.userRepository.save({
       name: data.name,
