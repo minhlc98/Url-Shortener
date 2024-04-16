@@ -23,6 +23,6 @@ export class User {
   @Column({ type: 'timestamptz', default: null })
   last_login_failed_at: Date;
 
-  @Column({ type: 'timestamptz', default: 'Now()' })
+  @Column({ type: 'timestamptz', default: () => 'now()' })
   created_at: Date;
 }

@@ -20,6 +20,6 @@ export class Url {
   @Column({ type: 'timestamp', default: null })
   last_visited_at: Date;
 
-  @Column({ type: 'timestamp', default: 'Now()' })
+  @Column({ type: 'timestamp', default: () => 'now()' })
   created_at: Date;
 }
