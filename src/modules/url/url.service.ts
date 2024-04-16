@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -17,7 +17,7 @@ export class UrlService {
   ) {}
 
   async createShortUrl(data: ShortUrlDto, user: JwtPayload): Promise<Url> {
-    const originalUrl = data.original_url.trim();
+    const originalUrl = data.originalUrl.trim();
     const hash = createHashMD5(`${user.id}@${originalUrl}`);
     const hashOriginalUrl = createHashMD5(originalUrl);
     const existedUrl = await this.urlRepository.findOneBy({ hash_original_url: hashOriginalUrl, user_id: user.id });
@@ -25,14 +25,29 @@ export class UrlService {
       return existedUrl;
     }
 
-    const url = await this.urlRepository.save({
-      hash: hash.substring(0, this.hashLength),
-      original_url: data.original_url,
-      hash_original_url: hashOriginalUrl,
-      user_id: user.id,
-    });
+    let max_retries: number = 5
+    for (let i = 0; i < max_retries; ++i) {
+      try {
+        const newHash = hash.substring(i, this.hashLength + i);
+        await this.urlRepository.insert({
+          hash: newHash,
+          original_url: originalUrl,
+          hash_original_url: hashOriginalUrl,
+          user_id: user.id,
+        });
 
-    return url;
+        const insertedUrl = await this.urlRepository.findOneBy({ hash: newHash });
+        return insertedUrl;
+      }
+      catch (error) {
+        // PG duplicated error code
+        if (error.code !== '23505') {
+          throw error;
+        }
+      }
+    }
+
+    throw new HttpException('Không thể tạo đường dẫn', HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
   async redirectToOriginalUrl(hash: string): Promise<RedirectUrlResult> {
