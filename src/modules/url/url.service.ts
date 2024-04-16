@@ -60,6 +60,10 @@ export class UrlService {
       throw new NotFoundException('Không tìm thấy đường dẫn.');
     }
 
+    url.visited_count += 1;
+    url.last_visited_at = new Date();
+    await this.urlRepository.save(url);
+
     return { url: url.original_url }; 
   }
 }
