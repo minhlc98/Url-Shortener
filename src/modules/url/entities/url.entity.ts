@@ -17,9 +17,9 @@ export class Url {
   @Column({ type: 'integer', default: 0 })
   visited_count: number;
 
-  @Column({ type: 'timestamp', default: null })
+  @Column({ type: 'timestamptz', default: null })
   last_visited_at: Date;
 
-  @Column({ type: 'timestamp', default: () => 'now()' })
+  @Column({ type: 'timestamptz', default: () => 'now()' })
   created_at: Date;
 }
